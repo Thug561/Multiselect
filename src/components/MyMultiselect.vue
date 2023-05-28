@@ -1,35 +1,31 @@
 <template>
-    <div class="background-card" tabindex="-1" ref="parent" @blur="focused = false">
-        <h1>Chips</h1>
-        <h4>Use chips prop to make selected option as chip.</h4>
-        <div class="my-multiselect" :style="{ width: width }" @click="handleClick" tabindex="-1" ref="parent" @blur="focused = false">
-            <div class="input-with-arrow">
-        <span class="arrow" @click="rotateArrow">
-          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" tag="i" class="v-icon notranslate v-theme--light v-icon--size-default iconify iconify--mdi" width="1em" height="1em" viewBox="0 0 24 24">
-            <path fill="currentColor" d="m7 10l5 5l5-5H7Z"></path>
-          </svg>
+    <h1>Chips</h1>
+    <h4>Use chips prop to make selected option as chip.</h4>
+    <div class="multiselect" :style="{ width: width }" @blur="focused = false" ref="parent" >
+        <label v-if="label">{{ label }}</label>
+        <div class="multiselect-wrapper" :class="{ 'disabled': disabled }"  >
+        <div class="selected-tags">
+        <span
+            class="tag"
+            v-for="selectedOption in selectedOptions"
+            :key="getOptionValue(selectedOption)"
+            @click="deselectOption(selectedOption)"
+        >
+          {{ getOptionLabel(selectedOption) }}
+          <i class="close-icon"></i>
         </span>
             </div>
 
-            <div class="my-multiselect__placeholder" v-if="modelValue.length === 0 || (showCount ? modelValue.length <= 4 : modelValue.length <= 12)">
-                {{ getPlaceholderText(false) }}
-            </div>
-            <div class="my-multiselect__selected" v-for="(option, i) in formatedOptions" :key="i" v-show="option.checked && i < 4">
-                <template v-if="showCount && i >= remainingCount && i !== formatedOptions.length - remainingCount">{{ '' }}</template>
-
-                <template v-else>
-                    {{ option[displayProperty] }}
-                </template>
-                <span class="my-multiselect__remove" @click="preventClose($event); handleOptionClick(i)">&times;</span>
-            </div>
-            <div class="my-multiselect__options" v-show="focused" @click="preventClose" :style="{ top: optionsTop }">
-                <div class="my-multiselect__option" :class="{ 'my-multiselect__option--checked': option.checked }" v-for="(option, i) in formatedOptions" :key="i" @click="handleOptionClick(i)">
-                    <div class="my-multiselect__checkbox"></div>
-                    <div class="my-multiselect__text">
-                        {{ option[displayProperty] }}
-                    </div>
-                </div>
-            </div>
+            <ul class="option-list" :class="{ 'hide-selected': hideSelected, 'show': showOptions }" :style="{ top: optionsTop }" >
+                <li
+                    v-for="option in filteredOptions"
+                    :key="getOptionValue(option)"
+                    @click="toggleOption(option)"
+                    :class="{ selected: isOptionSelected(option)}"
+                >
+                    {{ getOptionLabel(option) }}
+                </li>
+            </ul>
         </div>
     </div>
 </template>
@@ -40,104 +36,197 @@ export default {
         return {
             focused: false,
             optionsTop: "34px",
-            showCount: false,
+            showCount: true,
+            selectedOptions: [],
+            searchQuery: '',
+            showOptions: false
         };
     },
     props: {
+        value: {
+            type: [Object, Array, String, Number, null],
+            default: null
+        },
+        items: {
+            type: [Object, Array],
+            default: () => ({})
+        },
+        multiple: {
+            type: Boolean,
+            default: true
+        },
+        tags: {
+            type: Boolean,
+            default: true
+        },
         width: {
             type: String,
             default: "325px",
         },
-        options: {
-            type: Array,
-            default: () => [],
+        object: {
+            type: Boolean,
+            default: true
         },
-        modelValue: {
+        labelProp: {
+            type: String,
+            default: 'label'
+        },
+        valueProp: {
+            type: String,
+            default: 'id'
+        },
+        search: {
+            type: Boolean,
+            default: false
+        },
+        searchBy: {
+            type: String,
+            default: 'label'
+        },
+        hideSelected: {
+            type: Boolean,
+            default: false
+        },
+        disabled: {
+            type: Boolean,
+            default: false
+        },
+        default: {
             type: Array,
-            default: () => [],
+            default: () => []
+        },
+        label: {
+            type: String,
+            default: null
         },
         placeholder: {
             type: String,
-            default: "Chips",
-        },
-        displayProperty: {
-            type: String,
-            default: "name",
-        },
-        valueProperty: {
-            type: String,
-            default: "value",
-        },
-        required: {
-            default: false,
-        },
+            default: null
+        }
     },
-
     computed: {
-        formatedOptions() {
-            return this.options.map((option) => {
-                let checked = this.modelValue.some((item) => item === option[this.valueProperty]);
-                return { ...option, checked };
-            });
-        },
+        filteredOptions() {
+            if (this.search && this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                return this.getOptions().filter(option =>
+                    this.getOptionLabel(option).toLowerCase().includes(query)
+                );
+            } else {
+                return this.getOptions();
+            }
+        }
     },
-
+    watch: {
+        value: {
+            immediate: true,
+            handler(newValue, oldValue) {
+                if (newValue !== oldValue) {
+                    this.selectedOptions = this.getSelectedOptions();
+                    this.$emit('change', newValue, oldValue);
+                }
+            }
+        }
+    },
     mounted() {
         this.fixTop();
     },
-
     methods: {
         fixTop() {
-            this.optionsTop = this.$refs.parent.clientHeight + -135 + "px";
+            this.optionsTop = this.$refs.parent.clientHeight + 2 + "px";
         },
 
-        rotateArrow() {
-            const arrow = document.querySelector('.arrow');
-            arrow.classList.toggle('rotated');
-        },
-
-        getPlaceholderText() {
-            if (this.modelValue.length <= 4) {
-                return this.placeholder;
+        toggleOption(option) {
+            if (this.isOptionSelected(option)) {
+                this.deselectOption(option);
             } else {
-                const remainingCount = this.modelValue.length - 4;
-                return `${this.placeholder} +${remainingCount}`;
+                this.selectOption(option);
             }
         },
 
-        handleOptionClick(i) {
-            let newValue = [...this.modelValue];
-
-            if (!this.formatedOptions[i].checked) {
-                if (this.modelValue.length === 0 || !this.required) {
-                    newValue.push(this.options[i][this.valueProperty]);
-                }
+        getOptions() {
+            if (Array.isArray(this.items)) {
+                return this.items;
+            } else if (typeof this.items === 'object') {
+                return Object.values(this.items);
             } else {
-                let existIndex = this.modelValue.findIndex(
-                    v => v === this.options[i][this.valueProperty]
+                return [];
+            }
+        },
+        getOptionLabel(option) {
+            if (typeof option === 'object' && option !== null) {
+                return option[this.labelProp] || '';
+            } else {
+                return option;
+            }
+        },
+        getOptionValue(option) {
+            if (typeof option === 'object' && option !== null) {
+                return option[this.valueProp] || '';
+            } else {
+                return option;
+            }
+        },
+        isOptionSelected(option) {
+            if (this.multiple) {
+                return this.selectedOptions.some(selectedOption =>
+                    this.getOptionValue(selectedOption) === this.getOptionValue(option)
                 );
-                newValue.splice(existIndex, 1);
+            } else {
+                return this.getOptionValue(this.selectedOptions) === this.getOptionValue(option);
             }
-
-            this.showCount = newValue.length > 8;
-            if (this.showCount) {
-                this.remainingCount = newValue.length - 28;
+        },
+        getSelectedOptions() {
+            if (this.multiple) {
+                return this.value || [];
+            } else {
+                return this.value ? [this.value] : [];
             }
+        },
 
-            this.$emit("update:modelValue", newValue);
-            this.showCount = newValue.length > 8;
 
-            //   this.localOptions[i].checked = !this.localOptions[i].checked;
-            console.log(this.$refs.parent);
+        selectOption(option) {
+            if (!this.disabled) {
+                if (this.multiple) {
+                    const selectedOptions = [...this.selectedOptions];
+                    if (!this.isOptionSelected(option)) {
+                        selectedOptions.push(option);
+                        this.selectedOptions = selectedOptions;
+                        this.$emit('select', option);
+                    }
+                } else {
+                    this.selectedOptions = [option];
+                    this.$emit('select', option);
+
+                }
+            }
             setTimeout(this.fixTop, 100);
         },
-        preventClose(e) {
-            e.stopPropagation();
+        deselectOption(option) {
+            if (!this.disabled && this.isOptionSelected(option)) {
+                let selectedOptions = this.selectedOptions.filter(selectedOption =>
+                    this.getOptionValue(selectedOption) !== this.getOptionValue(option)
+                );
+                this.selectedOptions = selectedOptions;
+                this.$emit('deselect', option);
+                this.emitValue();
+            }
+            setTimeout(this.fixTop, 100);
         },
-        handleClick() {
-            this.focused = !this.focused;
+
+
+        handleSearchChange() {
+            this.$emit('search-change', this.searchQuery);
+        },
+        emitValue() {
+            if (this.multiple) {
+                const values = this.selectedOptions.map(option => this.getOptionValue(option));
+                this.$emit('input', values);
+            } else {
+                const selectedOption = this.selectedOptions.length ? this.selectedOptions[0] : null;
+                this.$emit('input', this.getOptionValue(selectedOption));
+            }
         }
-    }
+    },
 };
 </script>
 
@@ -171,7 +260,6 @@ body{
     transition: transform 0.3s ease;
 }
 
-
 .background-card{
     padding: 10px 0px 40px 30px;
     width: 400px;
@@ -181,7 +269,8 @@ body{
     border-radius: 6px;
     box-shadow: 0 4px 5px -2px;
 }
-.my-multiselect {
+
+.multiselect {
     padding: 6px 12px;
     margin: 8px 0;
     display: inline-block;
@@ -195,20 +284,20 @@ body{
     outline: 1px solid #d2d1d3;
 }
 
-.my-multiselect:hover {
+.multiselect:hover {
     outline: 1px solid #97969b;
     transition: .2s linear;
 }
 
-.my-multiselect:focus {
+.multiselect:focus {
     outline: 2px solid #9156fd;
 }
 
-.my-multiselect__placeholder {
+.hide-selected {
     color: #929292;
 }
 
-.my-multiselect__selected {
+.tag {
     padding: 4px 8px;
     padding-right: 0;
     margin: 3px 3px;
@@ -218,17 +307,17 @@ body{
     z-index: 2;
 }
 
-.my-multiselect__remove {
+.close-icon {
     cursor: pointer;
     padding-right: 7px;
 }
 
-.my-multiselect__remove:hover {
+.close-icon:hover {
     color: red;
     font-weight: bold;
 }
 
-.my-multiselect__options {
+.option-list {
     position: absolute;
     right: 0;
     left: 0;
@@ -236,21 +325,21 @@ body{
     background: #fff;
     flex-direction: column;
     box-shadow: 0 0 3px 3px #ececed;
-    padding: 5px 0;
+    padding: 05px 0;
     min-height: 55px;
     max-height: 188px;
     overflow-y: auto;
     border-radius: 3px;
 }
 
-.my-multiselect__option {
+.option-list {
     padding: 6px 11px;
     cursor: pointer;
     display: flex;
     align-items: center;
 }
 
-.my-multiselect__option--checked {
+.my-multiselect__optiomultiselect-wrappern--checked {
     color: #504b56;
     font-weight: bold;
 }
@@ -260,21 +349,21 @@ body{
     font-weight: bold;
 }
 
-.my-multiselect__text:hover {
+.multiselect__text:hover {
     background-color: #eeeeef;
     font-weight: bold;
 }
 
-.my-multiselect__text::after {
+.multiselect__text::after {
     background-color: #eeeeef;
     font-weight: bold;
 }
 
-.my-multiselect__option:hover{
+.multiselect__option:hover{
     background-color: #eeeeef;
 }
 
-.my-multiselect__checkbox {
+.multiselect__checkbox {
     width: 22px;
     height: 22px;
     border: 2px solid #969696;
@@ -284,13 +373,13 @@ body{
     border-radius: 3px;
 }
 
-.my-multiselect__option--checked .my-multiselect__checkbox {
+.multiselect__option--checked .multiselect__checkbox {
     background: #504b56;
     border: none;
     border-radius: 3px;
 }
 
-.my-multiselect__option--checked .my-multiselect__checkbox::after {
+.multiselect__option--checked .multiselect__checkbox::after {
     width: 14px;
     height: 9px;
     border-left: 2px solid rgb(255, 255, 255);
@@ -303,3 +392,4 @@ body{
     top: 4px;
 }
 </style>
+
