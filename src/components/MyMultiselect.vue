@@ -1,27 +1,37 @@
 <template>
     <h1>Chips</h1>
     <h4>Use chips prop to make selected option as chip.</h4>
-    <div class="multiselect" :style="{ width: width }" @blur="focused = false" ref="parent" >
+    <div class="multiselect"
+         :style="{ width: width }"
+         @blur="focused = false"
+         ref="parent">
+
         <label v-if="label">{{ label }}</label>
-        <div class="multiselect-wrapper" :class="{ 'disabled': disabled }"  >
-        <div class="selected-tags">
+
+        <div class="multiselect-wrapper"
+             :class="{ 'disabled': disabled }">
+
+            <div class="selected-tags">
         <span
-            class="tag"
-            v-for="selectedOption in selectedOptions"
-            :key="getOptionValue(selectedOption)"
-            @click="deselectOption(selectedOption)"
-        >
-          {{ getOptionLabel(selectedOption) }}
-          <i class="close-icon"></i>
+                class="tag"
+                v-for="selectedOption in selectedOptions"
+                :key="getOptionValue(selectedOption)"
+                @click="deselectOption(selectedOption)">
+
+            {{ getOptionLabel(selectedOption) }}
+
+            <i class="close-icon"></i>
         </span>
             </div>
 
-            <ul class="option-list" :class="{ 'hide-selected': hideSelected, 'show': showOptions }" :style="{ top: optionsTop }" >
+            <ul class="option-list"
+                :class="{ 'hide-selected': hideSelected, 'show': showOptions }"
+                :style="{ top: optionsTop }">
                 <li
-                    v-for="option in filteredOptions"
-                    :key="getOptionValue(option)"
-                    @click="toggleOption(option)"
-                    :class="{ selected: isOptionSelected(option)}"
+                        v-for="option in filteredOptions"
+                        :key="getOptionValue(option)"
+                        @click="toggleOption(option)"
+                        :class="{ selected: isOptionSelected(option)}"
                 >
                     {{ getOptionLabel(option) }}
                 </li>
@@ -39,9 +49,11 @@ export default {
             showCount: true,
             selectedOptions: [],
             searchQuery: '',
-            showOptions: false
+            showOptions: false,
+            hideSelected: false
         };
     },
+
     props: {
         value: {
             type: [Object, Array, String, Number, null],
@@ -75,14 +87,6 @@ export default {
             type: String,
             default: 'id'
         },
-        search: {
-            type: Boolean,
-            default: false
-        },
-        searchBy: {
-            type: String,
-            default: 'label'
-        },
         hideSelected: {
             type: Boolean,
             default: false
@@ -104,6 +108,7 @@ export default {
             default: null
         }
     },
+
     computed: {
         filteredOptions() {
             if (this.search && this.searchQuery) {
@@ -116,6 +121,7 @@ export default {
             }
         }
     },
+
     watch: {
         value: {
             immediate: true,
@@ -127,10 +133,24 @@ export default {
             }
         }
     },
+
     mounted() {
         this.fixTop();
     },
+
     methods: {
+        toggleDropdown() {
+            this.showOptions = !this.showOptions;
+        },
+        closeDropdown() {
+            this.showOptions = false;
+        },
+        handleOptionClick(option) {
+            this.toggleOption(option);
+            this.closeDropdown();
+        },
+
+
         fixTop() {
             this.optionsTop = this.$refs.parent.clientHeight + 2 + "px";
         },
@@ -152,6 +172,7 @@ export default {
                 return [];
             }
         },
+
         getOptionLabel(option) {
             if (typeof option === 'object' && option !== null) {
                 return option[this.labelProp] || '';
@@ -159,6 +180,7 @@ export default {
                 return option;
             }
         },
+
         getOptionValue(option) {
             if (typeof option === 'object' && option !== null) {
                 return option[this.valueProp] || '';
@@ -166,6 +188,7 @@ export default {
                 return option;
             }
         },
+
         isOptionSelected(option) {
             if (this.multiple) {
                 return this.selectedOptions.some(selectedOption =>
@@ -175,6 +198,7 @@ export default {
                 return this.getOptionValue(this.selectedOptions) === this.getOptionValue(option);
             }
         },
+
         getSelectedOptions() {
             if (this.multiple) {
                 return this.value || [];
@@ -182,7 +206,6 @@ export default {
                 return this.value ? [this.value] : [];
             }
         },
-
 
         selectOption(option) {
             if (!this.disabled) {
@@ -201,6 +224,7 @@ export default {
             }
             setTimeout(this.fixTop, 100);
         },
+
         deselectOption(option) {
             if (!this.disabled && this.isOptionSelected(option)) {
                 let selectedOptions = this.selectedOptions.filter(selectedOption =>
@@ -213,10 +237,6 @@ export default {
             setTimeout(this.fixTop, 100);
         },
 
-
-        handleSearchChange() {
-            this.$emit('search-change', this.searchQuery);
-        },
         emitValue() {
             if (this.multiple) {
                 const values = this.selectedOptions.map(option => this.getOptionValue(option));
@@ -231,7 +251,7 @@ export default {
 </script>
 
 <style scoped>
-body{
+body {
     background-color: #f4f5fb;
 }
 
@@ -260,7 +280,7 @@ body{
     transition: transform 0.3s ease;
 }
 
-.background-card{
+.background-card {
     padding: 10px 0px 40px 30px;
     width: 400px;
     left: 320px;
@@ -294,6 +314,7 @@ body{
 }
 
 .hide-selected {
+    display: none;
     color: #929292;
 }
 
@@ -318,10 +339,10 @@ body{
 }
 
 .option-list {
+    display: flex;
     position: absolute;
     right: 0;
     left: 0;
-    display: flex;
     background: #fff;
     flex-direction: column;
     box-shadow: 0 0 3px 3px #ececed;
@@ -359,7 +380,7 @@ body{
     font-weight: bold;
 }
 
-.multiselect__option:hover{
+.multiselect__option:hover {
     background-color: #eeeeef;
 }
 
@@ -392,4 +413,3 @@ body{
     top: 4px;
 }
 </style>
-
