@@ -4,7 +4,8 @@
     <div class="multiselect"
          :style="{ width: width }"
          @blur="focused = false"
-         ref="parent">
+         ref="parent"
+         @click="handleClick">
 
         <label v-if="label">{{ label }}</label>
 
@@ -26,7 +27,8 @@
 
             <ul class="option-list"
                 :class="{ 'hide-selected': hideSelected, 'show': showOptions }"
-                :style="{ top: optionsTop }">
+                :style="{ top: optionsTop }"
+                v-show="focused">
                 <li
                         v-for="option in filteredOptions"
                         :key="getOptionValue(option)"
@@ -41,6 +43,8 @@
 </template>
 
 <script>
+import {vShow} from "vue";
+
 export default {
     data() {
         return {
@@ -110,6 +114,8 @@ export default {
     },
 
     computed: {
+
+
         filteredOptions() {
             if (this.search && this.searchQuery) {
                 const query = this.searchQuery.toLowerCase();
@@ -139,22 +145,12 @@ export default {
     },
 
     methods: {
-        toggleDropdown() {
-            this.showOptions = !this.showOptions;
-        },
-        closeDropdown() {
-            this.showOptions = false;
-        },
-        handleOptionClick(option) {
-            this.toggleOption(option);
-            this.closeDropdown();
-        },
-
-
         fixTop() {
             this.optionsTop = this.$refs.parent.clientHeight + 2 + "px";
         },
-
+        handleClick(){
+            this.focused = !this.focused;
+        },
         toggleOption(option) {
             if (this.isOptionSelected(option)) {
                 this.deselectOption(option);
