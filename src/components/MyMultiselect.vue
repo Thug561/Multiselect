@@ -5,12 +5,14 @@
          :style="{ width: width }"
          @blur="focused = false"
          ref="parent"
-         @click="handleClick">
+         @click="handleClick"
+         tabindex="-1">
 
         <label v-if="label">{{ label }}</label>
 
         <div class="multiselect-wrapper"
-             :class="{ 'disabled': disabled }">
+             :class="{ 'disabled': disabled }"
+             @click="preventClose">
 
             <div class="selected-tags">
         <span
@@ -34,6 +36,7 @@
                         :key="getOptionValue(option)"
                         @click="toggleOption(option)"
                         :class="{ selected: isOptionSelected(option)}"
+
                 >
                     {{ getOptionLabel(option) }}
                 </li>
@@ -150,6 +153,9 @@ export default {
         },
         handleClick(){
             this.focused = !this.focused;
+        },
+        preventClose(e) {
+          e.stopPropagation();
         },
         toggleOption(option) {
             if (this.isOptionSelected(option)) {
