@@ -16,10 +16,10 @@
 
             <div class="selected-tags">
         <span
-                class="tag"
-                v-for="selectedOption in selectedOptions"
-                :key="getOptionValue(selectedOption)"
-                @click="deselectOption(selectedOption)">
+            class="tag"
+            v-for="selectedOption in selectedOptions"
+            :key="getOptionValue(selectedOption)"
+            @click="deselectOption(selectedOption)">
 
             {{ getOptionLabel(selectedOption) }}
 
@@ -32,10 +32,10 @@
                 :style="{ top: optionsTop }"
                 v-show="focused">
                 <li
-                        v-for="option in filteredOptions"
-                        :key="getOptionValue(option)"
-                        @click="toggleOption(option)"
-                        :class="{ selected: isOptionSelected(option)}"
+                    v-for="option in filteredOptions"
+                    :key="getOptionValue(option)"
+                    @click="toggleOption(option)"
+                    :class="{ selected: isOptionSelected(option)}"
 
                 >
                     {{ getOptionLabel(option) }}
@@ -147,14 +147,17 @@ export default {
     },
 
     methods: {
-        fixTop() {
-            this.optionsTop = this.$refs.parent.clientHeight + 2 + "px";
+        fixTop(timeout) {
+            function fixTopImpl(component) {
+                component.optionsTop = `${component.$refs.parent.clientHeight + 2}px`;
+            }
+            setTimeout(fixTopImpl, timeout, this);
         },
         handleClick(){
             this.focused = !this.focused;
         },
         preventClose(e) {
-          e.stopPropagation();
+            e.stopPropagation();
         },
         toggleOption(option) {
             if (this.isOptionSelected(option)) {
@@ -215,15 +218,13 @@ export default {
                     if (!this.isOptionSelected(option)) {
                         selectedOptions.push(option);
                         this.selectedOptions = selectedOptions;
-                        this.$emit('select', option);
                     }
                 } else {
                     this.selectedOptions = [option];
-                    this.$emit('select', option);
-
                 }
+                this.$emit('select', option);
             }
-            setTimeout(this.fixTop, 100);
+            this.fixTop(100);
         },
 
         deselectOption(option) {
@@ -235,7 +236,7 @@ export default {
                 this.$emit('deselect', option);
                 this.emitValue();
             }
-            setTimeout(this.fixTop, 100);
+            this.fixTop(100);
         },
 
         emitValue() {
