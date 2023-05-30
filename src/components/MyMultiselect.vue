@@ -46,7 +46,6 @@
 </template>
 
 <script>
-import {vShow} from "vue";
 
 export default {
     data() {
